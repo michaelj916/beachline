@@ -1,101 +1,163 @@
-import Image from "next/image";
+import Link from "next/link";
+import { FiArrowRight, FiCompass, FiRadio, FiRefreshCw } from "react-icons/fi";
+import SpotCard from "@/components/SpotCard";
+import { createServerSupabaseClient } from "@/lib/supabaseServerClient";
+import { getLatest } from "@/lib/ndbc";
+import type { NdbcObservation, Spot } from "@/lib/types";
 
-export default function Home() {
+async function fetchFeaturedSpots(): Promise<
+  Array<{ spot: Spot; observation: NdbcObservation | null }>
+> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("spots")
+      .select("*")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (error || !data) {
+      console.warn("Failed to load public spots:", error?.message);
+      return [];
+    }
+
+    const enriched = await Promise.all(
+      data.map(async (spot) => {
+        try {
+          const observation = await getLatest(spot.buoy_id);
+          return { spot, observation };
+        } catch (err) {
+          console.warn(
+            `Failed to load observation for buoy ${spot.buoy_id}`,
+            err
+          );
+          return { spot, observation: null };
+        }
+      })
+    );
+
+    return enriched;
+  } catch (err) {
+    console.warn("Supabase not configured yet, showing empty state.", err);
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const featured = await fetchFeaturedSpots();
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="flex flex-1 flex-col gap-12 pb-16">
+      <section className="grid gap-8 rounded-3xl border border-white/10 bg-white/5 px-8 py-14 shadow-lg shadow-sky-900/30 backdrop-blur">
+        <div className="flex flex-col gap-4">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-200">
+            Free & Open Source
+          </span>
+          <h1 className="text-balance text-4xl font-semibold sm:text-5xl lg:text-6xl">
+            Surfwatch is your open Surfline alternative.
+          </h1>
+          <p className="max-w-2xl text-lg text-white/70">
+            Monitor NOAA buoys, share favorite spots, and collaborate on the
+            highest-quality surf intelligence platform that runs entirely on free
+            tiers. Built with Next.js 14, Supabase, Leaflet, and TanStack Query.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-sky-400"
+          >
+            Launch dashboard <FiArrowRight aria-hidden />
+          </Link>
+          <Link
+            href="https://github.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 font-semibold transition hover:border-sky-300/60 hover:text-sky-100"
+          >
+            Star on GitHub
+          </Link>
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2">
+            <FiRadio aria-hidden className="text-sky-300" />
+            Live NDBC feed
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2">
+            <FiCompass aria-hidden className="text-sky-300" />
+            OpenStreetMap overlays
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2">
+            <FiRefreshCw aria-hidden className="text-sky-300" />
+            Realtime Supabase
+          </span>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold">Trending public spots</h2>
+            <p className="text-sm text-white/60">
+              Pulling directly from NOAA NDBC stations. Add your own spots after
+              signing in.
+            </p>
+          </div>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 text-sm text-sky-200 transition hover:text-sky-100"
+          >
+            Manage my quiver <FiArrowRight aria-hidden />
+          </Link>
+        </header>
+
+        {featured.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-10 text-center text-sm text-white/60">
+            No public spots yet. Once you connect Supabase and seed the{" "}
+            <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-xs">
+              spots
+            </code>{" "}
+            table, your list will appear automatically.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {featured.map(({ spot, observation }) => (
+              <SpotCard
+                key={spot.id}
+                spot={spot}
+                observation={observation ?? undefined}
+                href={`/dashboard/${spot.id}`}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-6 rounded-3xl border border-white/10 bg-black/30 p-8 backdrop-blur">
+        <h2 className="text-2xl font-semibold">Powered by open infrastructure</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-white">Supabase</h3>
+            <p className="mt-2 text-sm text-white/70">
+              Auth, Postgres, storage, and real-time channels. Add row-level
+              policies and run scheduled edge functions for buoy sync jobs.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-white">NOAA NDBC</h3>
+            <p className="mt-2 text-sm text-white/70">
+              Zero-cost marine observations. Use the built-in API route proxy to
+              avoid CORS and keep responses cache-friendly.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-white">Next.js 14</h3>
+            <p className="mt-2 text-sm text-white/70">
+              App Router, Server Components, edge-friendly data fetching, and
+              deploys with a single push to Vercel.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
