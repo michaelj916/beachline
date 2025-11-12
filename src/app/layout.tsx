@@ -63,6 +63,12 @@ async function Shell({ children }: { children: React.ReactNode }) {
                 >
                   Dashboard
                 </Link>
+                <Link
+                  href="/explore"
+                  className="rounded-full border border-white/10 px-4 py-1.5 transition hover:border-sky-400/60 hover:text-sky-100"
+                >
+                  Explore
+                </Link>
                 {session ? (
                   <form action={logout}>
                     <button

@@ -13,6 +13,7 @@ export type Spot = {
   lng: number | null;
   is_public: boolean;
   created_at: string;
+  provider_overrides: SpotProviderOverrides | null;
 };
 
 export type NdbcRawObservation = Record<string, string | undefined>;
@@ -44,6 +45,7 @@ export type Database = {
           username?: string | null;
           avatar_url?: string | null;
         };
+        Relationships: [];
       };
       spots: {
         Row: Spot;
@@ -55,6 +57,7 @@ export type Database = {
           lat?: number | null;
           lng?: number | null;
           is_public?: boolean;
+          provider_overrides?: SpotProviderOverrides | null;
         };
         Update: {
           buoy_id?: string;
@@ -62,9 +65,49 @@ export type Database = {
           lat?: number | null;
           lng?: number | null;
           is_public?: boolean;
+          provider_overrides?: SpotProviderOverrides | null;
         };
+        Relationships: [];
+      };
+      user_saved_spots: {
+        Row: {
+          id: string;
+          user_id: string;
+          spot_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          spot_id: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          spot_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
+export type SpotInsert = Database["public"]["Tables"]["spots"]["Insert"];
+
+export type SpotProviderOverrides = {
+  cdip?: {
+    stationId: string;
+  };
+  eccc?: {
+    stationId: string;
+  };
+  bom?: {
+    stationId: string;
   };
 };
 

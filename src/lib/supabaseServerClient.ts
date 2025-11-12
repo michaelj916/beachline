@@ -36,9 +36,9 @@ export function createServerSupabaseClient(): SupabaseClient<Database> {
     },
   };
 
-  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: cookieHandler,
-  });
+  }) as unknown as SupabaseClient<Database>;
 }
 
 export function createRouteHandlerSupabaseClient(
@@ -51,7 +51,7 @@ export function createRouteHandlerSupabaseClient(
     );
   }
 
-  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       get(name: string) {
         return req.cookies.get(name)?.value;
@@ -63,6 +63,6 @@ export function createRouteHandlerSupabaseClient(
         res.cookies.set({ name, value: "", ...options });
       },
     },
-  });
+  }) as unknown as SupabaseClient<Database>;
 }
 

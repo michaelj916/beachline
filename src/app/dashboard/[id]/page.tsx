@@ -6,7 +6,8 @@ import TideGauge from "@/components/TideGauge";
 import WaveChart from "@/components/WaveChart";
 import SpotMap from "@/components/SpotMap";
 import { createServerSupabaseClient } from "@/lib/supabaseServerClient";
-import { getLatest } from "@/lib/ndbc";
+import { getRecent } from "@/lib/ndbc";
+import { getCurrentWaveObservation } from "@/lib/waveProviders";
 import type { NdbcObservation, Spot } from "@/lib/types";
 
 type Props = {
@@ -34,7 +35,7 @@ async function getSpot(id: string): Promise<Spot | null> {
     return null;
   }
 
-  return data ?? null;
+  return (data as Spot | null) ?? null;
 }
 
 export default async function SpotPage({ params }: Props) {
@@ -57,7 +58,10 @@ export default async function SpotPage({ params }: Props) {
   }
 
   try {
-    observation = await getLatest(spot.buoy_id);
+    observation =
+      (await getCurrentWaveObservation(spot)) ??
+      (await getRecent(spot.buoy_id, 1)).at(0) ??
+      null;
   } catch (error) {
     console.warn("No latest observation found.", error);
   }

@@ -64,44 +64,62 @@ function assembleObservation(row: NdbcRawObservation): NdbcObservation {
 }
 
 export const getLatest = cache(async (buoy: string) => {
-  const res = await fetch(`${NDBC_BASE_URL}/latestobs/${buoy}.txt`, {
-    next: { revalidate: 300 },
-  });
+  const station = buoy.trim().toUpperCase();
+  try {
+    const res = await fetch(`${NDBC_BASE_URL}/latestobs/${station}.txt`, {
+      next: { revalidate: 300 },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch latest observation for buoy ${buoy}`);
-  }
+    if (res.status === 404) {
+      return null;
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch latest observation for buoy ${station}`);
+    }
 
-  const text = await res.text();
+    const text = await res.text();
   const { header, rows } = parseTable(text);
-  const row = rows[0];
+  const row =
+    rows.find((values) => /^\d{4}$/.test(values[0] ?? "")) ?? rows[0];
 
-  const entry = Object.fromEntries(
-    header.map((key, index) => [key, row[index]])
-  ) satisfies NdbcRawObservation;
-
-  return assembleObservation(entry);
-});
-
-export const getRecent = cache(async (buoy: string, limit = 24) => {
-  const res = await fetch(`${NDBC_BASE_URL}/realtime2/${buoy}.txt`, {
-    next: { revalidate: 300 },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch recent observations for buoy ${buoy}`);
-  }
-
-  const text = await res.text();
-  const { header, rows } = parseTable(text);
-  const observations = rows.slice(0, limit).map((row) => {
     const entry = Object.fromEntries(
       header.map((key, index) => [key, row[index]])
     ) satisfies NdbcRawObservation;
-    return assembleObservation(entry);
-  });
 
-  return observations.reverse();
+    return assembleObservation(entry);
+  } catch (error) {
+    console.warn("getLatest fallback", station, error);
+    return null;
+  }
 });
 
+export const getRecent = cache(async (buoy: string, limit = 24) => {
+  const station = buoy.trim().toUpperCase();
+  try {
+    const res = await fetch(`${NDBC_BASE_URL}/realtime2/${station}.txt`, {
+      next: { revalidate: 300 },
+    });
 
+    if (res.status === 404) {
+      return [];
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch recent observations for buoy ${station}`);
+    }
+
+    const text = await res.text();
+    const { header, rows } = parseTable(text);
+  const dataRows = rows.filter((row) => /^\d{4}$/.test(row[0] ?? ""));
+  const observations = dataRows.slice(0, limit).map((row) => {
+      const entry = Object.fromEntries(
+        header.map((key, index) => [key, row[index]])
+      ) satisfies NdbcRawObservation;
+      return assembleObservation(entry);
+    });
+
+    return observations.reverse();
+  } catch (error) {
+    console.warn("getRecent fallback", station, error);
+    return [];
+  }
+});

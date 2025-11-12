@@ -13,6 +13,9 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const data = await getRecent(buoy, safeLimit);
+    if (!data.length) {
+      return NextResponse.json({ data: [], warning: "No recent observations" });
+    }
     return NextResponse.json({ data });
   } catch (error) {
     console.error("Failed to fetch NDBC history", buoy, error);

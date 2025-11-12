@@ -1,33 +1,37 @@
 import Link from "next/link";
 import { FiArrowRight, FiMapPin, FiUsers } from "react-icons/fi";
-import type { Spot } from "@/lib/types";
-import type { NdbcObservation } from "@/lib/types";
+import type { ReactNode } from "react";
+import type { Spot, NdbcObservation } from "@/lib/types";
 
 type Props = {
   spot: Spot;
   observation?: NdbcObservation | null;
   href?: string;
+  action?: ReactNode;
 };
 
-export default function SpotCard({ spot, observation, href }: Props) {
+export default function SpotCard({ spot, observation, href, action }: Props) {
   return (
     <article className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-lg dark:border-black/30 dark:bg-black/40">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-semibold text-white">{spot.name}</h3>
           <p className="mt-1 text-sm text-white/70">
             Buoy #{spot.buoy_id}
           </p>
         </div>
-        <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
-          {spot.is_public ? (
-            <span className="inline-flex items-center gap-1">
-              <FiUsers aria-hidden /> Public
-            </span>
-          ) : (
-            "Private"
-          )}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
+            {spot.is_public ? (
+              <span className="inline-flex items-center gap-1">
+                <FiUsers aria-hidden /> Public
+              </span>
+            ) : (
+              "Private"
+            )}
+          </span>
+          {action}
+        </div>
       </div>
 
       {observation ? (

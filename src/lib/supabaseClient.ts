@@ -20,10 +20,10 @@ export function getBrowserSupabaseClient(): SupabaseClient<Database> {
         "Missing Supabase configuration. Please define NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
       );
     }
-    browserClient = createBrowserClient<Database>(
+    browserClient = createBrowserClient(
       SUPABASE_URL,
       SUPABASE_ANON_KEY
-    );
+    ) as unknown as SupabaseClient<Database>;
   }
   return browserClient;
 }

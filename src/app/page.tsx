@@ -1,51 +1,75 @@
 import Link from "next/link";
 import { FiArrowRight, FiCompass, FiRadio, FiRefreshCw } from "react-icons/fi";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import SpotCard from "@/components/SpotCard";
+import SpotSaveButton from "@/components/SpotSaveButton";
 import { createServerSupabaseClient } from "@/lib/supabaseServerClient";
-import { getLatest } from "@/lib/ndbc";
-import type { NdbcObservation, Spot } from "@/lib/types";
+import { getRecent } from "@/lib/ndbc";
+import { getCurrentWaveObservation } from "@/lib/waveProviders";
+import type { Database, NdbcObservation, Spot } from "@/lib/types";
 
-async function fetchFeaturedSpots(): Promise<
-  Array<{ spot: Spot; observation: NdbcObservation | null }>
-> {
-  try {
-    const supabase = createServerSupabaseClient();
-    const { data, error } = await supabase
-      .from("spots")
-      .select("*")
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
-      .limit(6);
+async function fetchFeaturedSpots(
+  supabase: SupabaseClient<Database> | null
+): Promise<Array<{ spot: Spot; observation: NdbcObservation | null }>> {
+  if (!supabase) return [];
 
-    if (error || !data) {
-      console.warn("Failed to load public spots:", error?.message);
-      return [];
-    }
+  const { data, error } = await supabase
+    .from("spots")
+    .select("*")
+    .eq("is_public", true)
+    .order("created_at", { ascending: false })
+    .limit(6);
 
-    const enriched = await Promise.all(
-      data.map(async (spot) => {
-        try {
-          const observation = await getLatest(spot.buoy_id);
-          return { spot, observation };
-        } catch (err) {
-          console.warn(
-            `Failed to load observation for buoy ${spot.buoy_id}`,
-            err
-          );
-          return { spot, observation: null };
-        }
-      })
-    );
-
-    return enriched;
-  } catch (err) {
-    console.warn("Supabase not configured yet, showing empty state.", err);
+  if (error) {
+    console.warn("Failed to load public spots:", error?.message);
     return [];
   }
+
+  const spots = (data ?? []) as Spot[];
+
+  const enriched = await Promise.all(
+    spots.map(async (spot) => {
+      try {
+        let observation = (await getCurrentWaveObservation(
+          spot
+        )) as NdbcObservation | null;
+        if (!observation) {
+          observation = (await getRecent(spot.buoy_id, 1)).at(0) ?? null;
+        }
+        return { spot, observation };
+      } catch (err) {
+        console.warn(`Failed to load observation for buoy ${spot.buoy_id}`, err);
+        return { spot, observation: null };
+      }
+    })
+  );
+
+  return enriched;
 }
 
 export default async function HomePage() {
-  const featured = await fetchFeaturedSpots();
+  let supabase: SupabaseClient<Database> | null = null;
+  let userId: string | null = null;
+  try {
+    supabase = createServerSupabaseClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    userId = session?.user.id ?? null;
+  } catch (err) {
+    console.warn("Supabase not configured yet, showing empty state.", err);
+  }
+
+  const featured = await fetchFeaturedSpots(supabase);
+
+  let savedIds = new Set<string>();
+  if (supabase && userId) {
+    const { data: saved } = await supabase
+      .from("user_saved_spots")
+      .select("spot_id")
+      .eq("user_id", userId);
+    savedIds = new Set((saved ?? []).map((row) => row.spot_id));
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-12 pb-16">
@@ -126,6 +150,13 @@ export default async function HomePage() {
                 spot={spot}
                 observation={observation ?? undefined}
                 href={`/dashboard/${spot.id}`}
+                action={
+                  <SpotSaveButton
+                    spotId={spot.id}
+                    initialSaved={savedIds.has(spot.id)}
+                    size="sm"
+                  />
+                }
               />
             ))}
           </div>

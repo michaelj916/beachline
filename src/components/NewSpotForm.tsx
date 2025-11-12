@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { FiGlobe, FiPlus, FiShield } from "react-icons/fi";
 import clsx from "clsx";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
+import type { SpotInsert } from "@/lib/types";
 
 type FormState = {
   name: string;
@@ -46,13 +47,17 @@ export default function NewSpotForm() {
       const lat = state.lat ? Number(state.lat) : null;
       const lng = state.lng ? Number(state.lng) : null;
 
-      const { error: insertError } = await client.from("spots").insert({
+      const payload: SpotInsert = {
         name: state.name,
         buoy_id: state.buoyId.trim(),
         lat,
         lng,
         is_public: state.isPublic,
-      });
+      };
+
+      const { error: insertError } = await client
+        .from("spots")
+        .insert(payload as never);
 
       if (insertError) {
         setError(insertError.message);

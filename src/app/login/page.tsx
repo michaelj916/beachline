@@ -41,7 +41,7 @@ export default async function LoginPage() {
           <li>• Realtime broadcasts via Supabase channels</li>
         </ul>
         <Link
-          href="https://github.com/"
+          href="https://github.com/michaelj916/beachline/"
           target="_blank"
           rel="noreferrer"
           className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-sky-300/60 hover:text-sky-100"

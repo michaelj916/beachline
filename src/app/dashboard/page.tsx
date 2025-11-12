@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import SpotCard from "@/components/SpotCard";
+import SpotSaveButton from "@/components/SpotSaveButton";
 import NewSpotForm from "@/components/NewSpotForm";
 import { createServerSupabaseClient } from "@/lib/supabaseServerClient";
-import { getLatest } from "@/lib/ndbc";
+import { getRecent } from "@/lib/ndbc";
+import { getCurrentWaveObservation } from "@/lib/waveProviders";
 import type { NdbcObservation, Spot } from "@/lib/types";
 
 async function withObservations(spots: Spot[]): Promise<
@@ -12,7 +14,12 @@ async function withObservations(spots: Spot[]): Promise<
   return Promise.all(
     spots.map(async (spot) => {
       try {
-        const observation = await getLatest(spot.buoy_id);
+        let observation = (await getCurrentWaveObservation(
+          spot
+        )) as NdbcObservation | null;
+        if (!observation) {
+          observation = (await getRecent(spot.buoy_id, 1)).at(0) ?? null;
+        }
         return { spot, observation };
       } catch (error) {
         console.warn("Failed to load observation", spot.buoy_id, error);
@@ -62,10 +69,19 @@ export default async function DashboardPage() {
       .limit(6),
   ]);
 
+  const mySpotRows = (mySpots ?? []) as Spot[];
+  const communitySpotRows = (communitySpots ?? []) as Spot[];
+
   const [mine, community] = await Promise.all([
-    withObservations(mySpots ?? []),
-    withObservations(communitySpots ?? []),
+    withObservations(mySpotRows),
+    withObservations(communitySpotRows),
   ]);
+
+  const { data: saved } = await supabase
+    .from("user_saved_spots")
+    .select("spot_id")
+    .eq("user_id", userId);
+  const savedSet = new Set((saved ?? []).map((row) => row.spot_id));
 
   return (
     <div className="flex flex-col gap-10 pb-16">
@@ -81,7 +97,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           <Link
-            href="https://github.com/"
+            href="https://github.com/michaelj916/beachline/"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-sky-300/60 hover:text-sky-100"
@@ -113,6 +129,12 @@ export default async function DashboardPage() {
                 spot={spot}
                 observation={observation ?? undefined}
                 href={`/dashboard/${spot.id}`}
+                action={
+                  <SpotSaveButton
+                    spotId={spot.id}
+                    initialSaved={savedSet.has(spot.id)}
+                  />
+                }
               />
             ))}
           </div>
@@ -140,6 +162,12 @@ export default async function DashboardPage() {
                 spot={spot}
                 observation={observation ?? undefined}
                 href={`/dashboard/${spot.id}`}
+                action={
+                  <SpotSaveButton
+                    spotId={spot.id}
+                    initialSaved={savedSet.has(spot.id)}
+                  />
+                }
               />
             ))}
           </div>
